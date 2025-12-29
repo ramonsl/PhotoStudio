@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { geminiImageService, OutputType } from '@/services/GeminiImageService'
 import { logger } from '@/lib/logger'
 import cloudinary from '@/lib/cloudinary'
+import { imageRepository } from '@/repositories/ImageRepository'
 
 export async function POST(request: NextRequest) {
     try {
@@ -148,13 +149,52 @@ export async function POST(request: NextRequest) {
             })
         )
 
-        logger.info('Images generated successfully', {
-            count: images.length,
+        // Save to database
+        const savedImages = await Promise.all(
+            images.map(async (image) => {
+                try {
+                    const saved = await imageRepository.saveGeneratedImage({
+                        original_photo_url: image.original_photo_url,
+                        generated_url: image.generated_url,
+                        output_type: image.output_type as 'front' | 'back' | 'real_situation',
+                        prompt_used: image.prompt_used,
+                        product_description: image.product_description,
+                        model_api: image.model_api,
+                        generation_time_ms: image.generation_time_ms,
+                        user_id: image.user_id,
+                        prompt_tokens: image.tokens?.prompt,
+                        candidates_tokens: image.tokens?.candidates,
+                        total_tokens: image.tokens?.total,
+                        input_cost_usd: image.cost?.input,
+                        output_cost_usd: image.cost?.output,
+                        total_cost_usd: image.cost?.total,
+                    })
+
+                    logger.info('Image saved to database', {
+                        id: saved.id,
+                        output_type: saved.output_type,
+                        total_cost: image.cost?.total,
+                    })
+
+                    return saved
+                } catch (error: any) {
+                    logger.error('Error saving image to database', {
+                        error: error.message,
+                        output_type: image.output_type,
+                    })
+                    // Return original image if save fails
+                    return image
+                }
+            })
+        )
+
+        logger.info('Images generated and saved successfully', {
+            count: savedImages.length,
         })
 
         return NextResponse.json({
             success: true,
-            images,
+            images: savedImages,
         })
     } catch (error: any) {
         logger.error('Error generating images', { error: error.message })

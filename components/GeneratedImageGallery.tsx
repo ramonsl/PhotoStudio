@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { GeneratedImage } from '@/types'
+import { DownloadModal } from './DownloadModal'
 
 interface GeneratedImageGalleryProps {
     images: GeneratedImage[]
@@ -20,6 +22,13 @@ export default function GeneratedImageGallery({
     isLoading = false,
     onImageClick,
 }: GeneratedImageGalleryProps) {
+    const [downloadModal, setDownloadModal] = useState<{
+        isOpen: boolean
+        imageUrl: string
+    }>({
+        isOpen: false,
+        imageUrl: '',
+    })
     if (isLoading) {
         return (
             <div className="space-y-4">
@@ -68,14 +77,18 @@ export default function GeneratedImageGallery({
                             />
 
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
-                                <a
-                                    href={image.generated_url}
-                                    download
-                                    onClick={(e) => e.stopPropagation()}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setDownloadModal({
+                                            isOpen: true,
+                                            imageUrl: image.generated_url,
+                                        })
+                                    }}
                                     className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white text-purple-600 rounded-full p-3 hover:bg-purple-600 hover:text-white"
                                 >
                                     <Download className="w-5 h-5" />
-                                </a>
+                                </button>
                             </div>
                         </div>
 
@@ -100,6 +113,12 @@ export default function GeneratedImageGallery({
                     </div>
                 ))}
             </div>
+
+            <DownloadModal
+                imageUrl={downloadModal.imageUrl}
+                isOpen={downloadModal.isOpen}
+                onClose={() => setDownloadModal({ isOpen: false, imageUrl: '' })}
+            />
         </div>
     )
 }
