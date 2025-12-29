@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "node scripts/migrate.js production && next start",
+    "start": "node scripts/migrate.js production || true && next start",
     "lint": "next lint",
     "test": "jest",
     "migrate:create": "node scripts/create-migration.js",
