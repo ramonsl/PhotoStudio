@@ -9,6 +9,13 @@ export interface GeneratedImage {
     generation_time_ms?: number
     created_at: Date
     metadata?: Record<string, any>
+    user_id?: number
+    prompt_tokens?: number
+    candidates_tokens?: number
+    total_tokens?: number
+    input_cost_usd?: number
+    output_cost_usd?: number
+    total_cost_usd?: number
 }
 
 export interface CreateGeneratedImageInput {
@@ -20,6 +27,13 @@ export interface CreateGeneratedImageInput {
     model_api?: string
     generation_time_ms?: number
     metadata?: Record<string, any>
+    user_id?: number
+    prompt_tokens?: number
+    candidates_tokens?: number
+    total_tokens?: number
+    input_cost_usd?: number
+    output_cost_usd?: number
+    total_cost_usd?: number
 }
 
 export interface ImageGenerationRequest {

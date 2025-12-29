@@ -6,6 +6,16 @@ interface GenerationResult {
     imageUrl: string
     prompt: string
     generationTimeMs: number
+    tokens?: {
+        prompt: number
+        candidates: number
+        total: number
+    }
+    cost?: {
+        input: number
+        output: number
+        total: number
+    }
 }
 
 export class GeminiImageService {
@@ -91,6 +101,17 @@ export class GeminiImageService {
 
             const data = await response.json()
 
+            // Extract usage metadata for cost tracking
+            const usageMetadata = data.usageMetadata || {}
+            const promptTokens = usageMetadata.promptTokenCount || 0
+            const candidatesTokens = usageMetadata.candidatesTokenCount || 0
+            const totalTokens = usageMetadata.totalTokenCount || 0
+
+            // Calculate approximate cost (Gemini 2.5 Flash: $0.30/1M input, $2.50/1M output)
+            const inputCost = (promptTokens / 1_000_000) * 0.30
+            const outputCost = (candidatesTokens / 1_000_000) * 2.50
+            const totalCost = inputCost + outputCost
+
             // Extract the generated image from the response
             const candidates = data.candidates
             if (!candidates || candidates.length === 0) {
@@ -126,12 +147,32 @@ export class GeminiImageService {
                 outputType,
                 generationTimeMs,
                 mimeType: imageData.mime_type || imageData.mimeType,
+                tokens: {
+                    prompt: promptTokens,
+                    candidates: candidatesTokens,
+                    total: totalTokens,
+                },
+                cost: {
+                    input: `$${inputCost.toFixed(6)}`,
+                    output: `$${outputCost.toFixed(6)}`,
+                    total: `$${totalCost.toFixed(6)}`,
+                },
             })
 
             return {
                 imageUrl,
                 prompt,
                 generationTimeMs,
+                tokens: {
+                    prompt: promptTokens,
+                    candidates: candidatesTokens,
+                    total: totalTokens,
+                },
+                cost: {
+                    input: inputCost,
+                    output: outputCost,
+                    total: totalCost,
+                },
             }
         } catch (error: any) {
             logger.error('Error generating image', {
