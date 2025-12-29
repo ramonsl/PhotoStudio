@@ -4,8 +4,12 @@ const path = require('path')
 
 const isProduction = process.argv[2] === 'production'
 
-// Load environment variables
-require('dotenv').config({ path: '.env.local' })
+// Load environment variables only if .env.local exists (local dev)
+// In production (Railway), DATABASE_URL is already in environment
+const envPath = path.join(__dirname, '..', '.env.local')
+if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath })
+}
 
 const DATABASE_URL = process.env.DATABASE_URL
 
@@ -13,6 +17,7 @@ if (!DATABASE_URL) {
     console.error('❌ DATABASE_URL not set in environment variables')
     process.exit(1)
 }
+
 
 const pool = new Pool({
     connectionString: DATABASE_URL,
