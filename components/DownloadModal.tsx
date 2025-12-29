@@ -57,25 +57,18 @@ export function DownloadModal({ imageUrl, isOpen, onClose }: DownloadModalProps)
     )
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="modal-overlay">
+            <div className="modal-content">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">Baixar Imagem</h2>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-full transition"
-                    >
+                <div className="modal-header">
+                    <h2 className="modal-title">Baixar Imagem</h2>
+                    <button onClick={onClose} className="modal-close">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
                 {/* Error Message */}
-                {error && (
-                    <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                        {error}
-                    </div>
-                )}
+                {error && <div className="alert alert-error">{error}</div>}
 
                 {/* Preview */}
                 <div className="mb-6">
@@ -83,35 +76,42 @@ export function DownloadModal({ imageUrl, isOpen, onClose }: DownloadModalProps)
                         src={imageUrl}
                         alt="Preview"
                         className="w-full max-h-64 object-contain rounded-lg border"
+                        style={{ borderColor: 'var(--color-border-light)' }}
                     />
                 </div>
 
                 {/* Instagram Formats */}
                 <div className="mb-6">
-                    <h3 className="font-bold mb-3 flex items-center gap-2 text-lg text-gray-900">
+                    <h3 className="download-section-title">
                         <Instagram className="w-5 h-5 text-pink-600" />
                         Instagram
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         {instagramFormats.map(([key, format]) => (
                             <button
                                 key={key}
                                 onClick={() => handleDownload(key)}
                                 disabled={downloading !== null}
-                                className="p-4 border-2 rounded-lg hover:border-pink-500 hover:bg-pink-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="download-format-card"
+                                style={{
+                                    borderColor:
+                                        downloading === key
+                                            ? 'var(--color-secondary)'
+                                            : undefined,
+                                }}
                             >
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="font-semibold text-left text-gray-900">{format.name}</div>
+                                    <div className="download-format-name">{format.name}</div>
                                     {downloading === key ? (
                                         <Loader2 className="w-5 h-5 animate-spin text-pink-600" />
                                     ) : (
-                                        <Download className="w-5 h-5 text-gray-400" />
+                                        <Download className="w-5 h-5" style={{ color: 'var(--color-text-muted)' }} />
                                     )}
                                 </div>
-                                <div className="text-sm text-gray-700 font-medium text-left">
+                                <div className="download-format-dimensions">
                                     {format.width}x{format.height}
                                 </div>
-                                <div className="text-xs text-gray-400 text-left mt-1">
+                                <div className="download-format-meta">
                                     {format.width / format.height > 1
                                         ? 'Paisagem'
                                         : format.width / format.height < 1
@@ -125,41 +125,47 @@ export function DownloadModal({ imageUrl, isOpen, onClose }: DownloadModalProps)
 
                 {/* Marketplace Formats */}
                 <div>
-                    <h3 className="font-bold mb-3 flex items-center gap-2 text-lg text-gray-900">
+                    <h3 className="download-section-title">
                         <ShoppingBag className="w-5 h-5 text-blue-600" />
                         Marketplaces
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         {marketplaceFormats.map(([key, format]) => (
                             <button
                                 key={key}
                                 onClick={() => handleDownload(key)}
                                 disabled={downloading !== null}
-                                className="p-4 border-2 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="download-format-card"
+                                style={{
+                                    borderColor:
+                                        downloading === key
+                                            ? 'var(--color-accent-blue)'
+                                            : undefined,
+                                }}
                             >
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="font-semibold text-left text-gray-900">{format.name}</div>
+                                    <div className="download-format-name">{format.name}</div>
                                     {downloading === key ? (
                                         <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
                                     ) : (
-                                        <Download className="w-5 h-5 text-gray-400" />
+                                        <Download className="w-5 h-5" style={{ color: 'var(--color-text-muted)' }} />
                                     )}
                                 </div>
-                                <div className="text-sm text-gray-700 font-medium text-left">
+                                <div className="download-format-dimensions">
                                     {format.width}x{format.height}
                                 </div>
-                                <div className="text-xs text-gray-400 text-left mt-1">
-                                    Alta qualidade
-                                </div>
+                                <div className="download-format-meta">Alta qualidade</div>
                             </button>
                         ))}
                     </div>
                 </div>
 
                 {/* Info */}
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm text-blue-800">
-                    <p className="font-medium mb-1">💡 Dica:</p>
-                    <p>
+                <div className="alert alert-info mt-6">
+                    <p className="text-body-small mb-1">
+                        <strong>💡 Dica:</strong>
+                    </p>
+                    <p className="text-body-small">
                         Todas as imagens são otimizadas para cada plataforma com qualidade máxima
                         (95%).
                     </p>
