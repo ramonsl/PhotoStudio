@@ -6,7 +6,7 @@ import cloudinary from '@/lib/cloudinary'
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { imageUrls, outputTypes } = body
+        const { imageUrls, outputTypes, userId } = body
 
         // Validation
         if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
         logger.info('Starting image generation with reference image', {
             imageUrls,
             outputTypes,
+            userId,
         })
 
         // Fetch the first uploaded image and convert to base64
@@ -119,6 +120,9 @@ export async function POST(request: NextRequest) {
                         generation_time_ms: result.generationTimeMs,
                         created_at: new Date().toISOString(),
                         cloudinary_id: uploadResult.public_id,
+                        user_id: userId,
+                        tokens: result.tokens,
+                        cost: result.cost,
                     }
                 } catch (error: any) {
                     logger.error('Error uploading generated image to Cloudinary', {
@@ -136,6 +140,9 @@ export async function POST(request: NextRequest) {
                         model_api: 'gemini-2.5-flash-image',
                         generation_time_ms: result.generationTimeMs,
                         created_at: new Date().toISOString(),
+                        user_id: userId,
+                        tokens: result.tokens,
+                        cost: result.cost,
                     }
                 }
             })

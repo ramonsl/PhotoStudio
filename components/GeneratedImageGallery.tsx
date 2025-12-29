@@ -6,6 +6,7 @@ import { GeneratedImage } from '@/types'
 interface GeneratedImageGalleryProps {
     images: GeneratedImage[]
     isLoading?: boolean
+    onImageClick?: (image: GeneratedImage) => void
 }
 
 const outputTypeLabels: Record<string, string> = {
@@ -17,6 +18,7 @@ const outputTypeLabels: Record<string, string> = {
 export default function GeneratedImageGallery({
     images,
     isLoading = false,
+    onImageClick,
 }: GeneratedImageGalleryProps) {
     if (isLoading) {
         return (
@@ -55,7 +57,8 @@ export default function GeneratedImageGallery({
                 {images.map(image => (
                     <div
                         key={image.id}
-                        className="group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300"
+                        onClick={() => onImageClick?.(image)}
+                        className="group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300 cursor-pointer"
                     >
                         <div className="aspect-square bg-gray-100 relative overflow-hidden">
                             <img
@@ -68,6 +71,7 @@ export default function GeneratedImageGallery({
                                 <a
                                     href={image.generated_url}
                                     download
+                                    onClick={(e) => e.stopPropagation()}
                                     className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white text-purple-600 rounded-full p-3 hover:bg-purple-600 hover:text-white"
                                 >
                                     <Download className="w-5 h-5" />
