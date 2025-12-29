@@ -36,3 +36,6 @@ next-env.d.ts
 # uploads
 /public/uploads
 /tmp
+.env.local
+railway-env-vars.json
+environment-variables.json

@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
+import cloudinary from '@/lib/cloudinary'
 import { logger } from '@/lib/logger'
-
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads')
-
-// Ensure upload directory exists
-async function ensureUploadDir() {
-    if (!existsSync(UPLOAD_DIR)) {
-        await mkdir(UPLOAD_DIR, { recursive: true })
-    }
-}
 
 export async function POST(request: NextRequest) {
     try {
-        await ensureUploadDir()
-
         const formData = await request.formData()
         const files = formData.getAll('files') as File[]
 
@@ -54,32 +41,46 @@ export async function POST(request: NextRequest) {
                 )
             }
 
-            // Generate unique filename
-            const timestamp = Date.now()
-            const randomStr = Math.random().toString(36).substring(7)
-            const extension = file.name.split('.').pop()
-            const filename = `${timestamp}_${randomStr}.${extension}`
-            const filepath = path.join(UPLOAD_DIR, filename)
-
-            // Save file
+            // Convert file to buffer
             const bytes = await file.arrayBuffer()
             const buffer = Buffer.from(bytes)
-            await writeFile(filepath, buffer)
 
-            const fileUrl = `/uploads/${filename}`
+            // Upload to Cloudinary
+            const uploadResult = await new Promise<any>((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    {
+                        folder: 'photostudio/uploads',
+                        resource_type: 'image',
+                        transformation: [
+                            { quality: 'auto', fetch_format: 'auto' }
+                        ]
+                    },
+                    (error, result) => {
+                        if (error) reject(error)
+                        else resolve(result)
+                    }
+                )
+
+                uploadStream.end(buffer)
+            })
+
+            const timestamp = Date.now()
+            const randomStr = Math.random().toString(36).substring(7)
 
             uploadedFiles.push({
                 id: `${timestamp}_${randomStr}`,
-                filename,
-                url: fileUrl,
+                filename: file.name,
+                url: uploadResult.secure_url,
                 size: file.size,
                 type: file.type,
+                cloudinary_id: uploadResult.public_id,
             })
 
-            logger.info('File uploaded successfully', {
-                filename,
+            logger.info('File uploaded to Cloudinary', {
+                filename: file.name,
                 size: file.size,
                 type: file.type,
+                cloudinary_url: uploadResult.secure_url,
             })
         }
 
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
             files: uploadedFiles,
         })
     } catch (error: any) {
-        logger.error('Error uploading files', { error: error.message })
+        logger.error('Error uploading files to Cloudinary', { error: error.message })
         return NextResponse.json(
             { error: 'Failed to upload files' },
             { status: 500 }
