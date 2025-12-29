@@ -88,7 +88,7 @@ export function DownloadModal({ imageUrl, isOpen, onClose }: DownloadModalProps)
 
                 {/* Instagram Formats */}
                 <div className="mb-6">
-                    <h3 className="font-semibold mb-3 flex items-center gap-2 text-lg">
+                    <h3 className="font-bold mb-3 flex items-center gap-2 text-lg text-gray-900">
                         <Instagram className="w-5 h-5 text-pink-600" />
                         Instagram
                     </h3>
@@ -101,14 +101,14 @@ export function DownloadModal({ imageUrl, isOpen, onClose }: DownloadModalProps)
                                 className="p-4 border-2 rounded-lg hover:border-pink-500 hover:bg-pink-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="font-medium text-left">{format.name}</div>
+                                    <div className="font-semibold text-left text-gray-900">{format.name}</div>
                                     {downloading === key ? (
                                         <Loader2 className="w-5 h-5 animate-spin text-pink-600" />
                                     ) : (
                                         <Download className="w-5 h-5 text-gray-400" />
                                     )}
                                 </div>
-                                <div className="text-sm text-gray-500 text-left">
+                                <div className="text-sm text-gray-700 font-medium text-left">
                                     {format.width}x{format.height}
                                 </div>
                                 <div className="text-xs text-gray-400 text-left mt-1">
@@ -125,7 +125,7 @@ export function DownloadModal({ imageUrl, isOpen, onClose }: DownloadModalProps)
 
                 {/* Marketplace Formats */}
                 <div>
-                    <h3 className="font-semibold mb-3 flex items-center gap-2 text-lg">
+                    <h3 className="font-bold mb-3 flex items-center gap-2 text-lg text-gray-900">
                         <ShoppingBag className="w-5 h-5 text-blue-600" />
                         Marketplaces
                     </h3>
@@ -138,14 +138,14 @@ export function DownloadModal({ imageUrl, isOpen, onClose }: DownloadModalProps)
                                 className="p-4 border-2 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="font-medium text-left">{format.name}</div>
+                                    <div className="font-semibold text-left text-gray-900">{format.name}</div>
                                     {downloading === key ? (
                                         <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
                                     ) : (
                                         <Download className="w-5 h-5 text-gray-400" />
                                     )}
                                 </div>
-                                <div className="text-sm text-gray-500 text-left">
+                                <div className="text-sm text-gray-700 font-medium text-left">
                                     {format.width}x{format.height}
                                 </div>
                                 <div className="text-xs text-gray-400 text-left mt-1">
