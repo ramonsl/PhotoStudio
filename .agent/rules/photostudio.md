@@ -117,6 +117,13 @@ Este arquivo serve como **fonte de verdade** para agentes de IA (como o Antigrav
 - **Rastreie:** Tempo de geração de imagens, taxa de sucesso da API, custos por chamada.  
 - **Ferramentas:** Integre com Sentry para erros e New Relic para performance.  
 
+## 📈 Segurança
+NUNCA commite arquivos com chaves de API reais
+Sempre use .env.local (que está no .gitignore)
+Use apenas placeholders no 
+.env.example
+
+
 ## 🔮 Próximos Passos e Melhorias
 - Suporte a múltiplas APIs de IA para redundância.  
 - Integração com IA para detecção automática de produto na foto (ex: via Vision API).  
