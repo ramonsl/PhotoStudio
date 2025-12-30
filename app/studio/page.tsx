@@ -7,21 +7,12 @@ import ImageUploadZone from '@/components/ImageUploadZone'
 import OutputTypeSelector, { OutputType } from '@/components/OutputTypeSelector'
 import GeneratedImageGallery from '@/components/GeneratedImageGallery'
 import FeedbackModal from '@/components/FeedbackModal'
-import { GeneratedImage } from '@/types'
-
-interface UploadedFile {
-    id: string
-    filename: string
-    url: string
-    size: number
-    type: string
-}
+import { GeneratedImage, PhotoSet } from '@/types'
 
 export default function StudioPage() {
     const [email, setEmail] = useState('')
     const [userId, setUserId] = useState<number | null>(null)
-    const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
-    const [selectedOutputTypes, setSelectedOutputTypes] = useState<OutputType[]>([])
+    const [photoSet, setPhotoSet] = useState<PhotoSet>({ front: null, back: null })
     const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([])
     const [isGenerating, setIsGenerating] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -32,9 +23,7 @@ export default function StudioPage() {
         imageUrl: string
     } | null>(null)
 
-    const canGenerate = email.trim() !== '' &&
-        uploadedFiles.length > 0 &&
-        selectedOutputTypes.length > 0
+    const canGenerate = email.trim() !== '' && photoSet.front !== null
 
     const handleEmailSubmit = async () => {
         if (!email.trim()) return
@@ -58,8 +47,8 @@ export default function StudioPage() {
         }
     }
 
-    const handleGenerate = async () => {
-        if (!canGenerate) return
+    const handleGenerate = async (outputTypes: OutputType[]) => {
+        if (!email.trim() || !photoSet.front) return
 
         // Ensure user is registered
         if (!userId) {
@@ -77,8 +66,9 @@ export default function StudioPage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    imageUrls: uploadedFiles.map(f => f.url),
-                    outputTypes: selectedOutputTypes,
+                    frontImageUrl: photoSet.front.url,
+                    backImageUrl: photoSet.back?.url,
+                    outputTypes: outputTypes,
                     userId,
                 }),
             })
@@ -217,59 +207,42 @@ export default function StudioPage() {
                             </h3>
                         </div>
                         <ImageUploadZone
-                            onFilesUploaded={setUploadedFiles}
-                            maxFiles={2}
+                            onFilesUploaded={setPhotoSet}
                         />
                     </div>
 
-                    {/* Step 2: Select Output Types */}
+                    {/* Step 2: Generate Images */}
                     <div className="bg-white rounded-2xl p-6 shadow-lg mb-8 border border-gray-100">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
                                 2
                             </div>
                             <h3 className="text-xl font-semibold text-gray-800">
-                                Selecione os Tipos de Saída
+                                Escolha o Tipo de Geração
                             </h3>
                         </div>
-                        <OutputTypeSelector
-                            selectedTypes={selectedOutputTypes}
-                            onSelectionChange={setSelectedOutputTypes}
-                        />
-                    </div>
 
-                    {/* Generate Button */}
-                    <div className="flex flex-col items-center gap-4 mb-8">
                         {error && (
-                            <div className="w-full bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                            <div className="w-full bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4">
                                 {error}
                             </div>
                         )}
-                        <button
-                            onClick={handleGenerate}
-                            disabled={!canGenerate || isGenerating}
-                            className="w-full max-w-md px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-semibold text-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                    Gerando Imagens...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="w-5 h-5" />
-                                    Gerar Imagens Profissionais
-                                </>
-                            )}
-                        </button>
+
+                        <OutputTypeSelector
+                            onGenerate={handleGenerate}
+                            isGenerating={isGenerating}
+                            disabled={!userId || !photoSet.front}
+                            hasBackPhoto={photoSet.back !== null}
+                        />
+
                         {!userId && (
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 mt-4 text-center">
                                 💡 Informe seu email acima para começar
                             </p>
                         )}
-                        {userId && !canGenerate && (
-                            <p className="text-sm text-gray-500">
-                                💡 Faça upload de fotos e selecione os tipos de saída
+                        {userId && !photoSet.front && (
+                            <p className="text-sm text-gray-500 mt-4 text-center">
+                                💡 Faça upload da foto de frente para gerar imagens
                             </p>
                         )}
                     </div>

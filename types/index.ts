@@ -1,3 +1,16 @@
+export interface UploadedFile {
+    id: string
+    filename: string
+    url: string
+    size: number
+    type: string
+}
+
+export interface PhotoSet {
+    front: UploadedFile | null
+    back: UploadedFile | null
+}
+
 export interface GeneratedImage {
     id: string
     original_photo_url: string
@@ -37,9 +50,11 @@ export interface CreateGeneratedImageInput {
 }
 
 export interface ImageGenerationRequest {
-    imageUrls: string[]
+    frontImageUrl: string
+    backImageUrl?: string
     outputTypes: ('front' | 'back' | 'real_situation')[]
     productDescription?: string
+    userId?: number
 }
 
 export interface ImageGenerationResponse {
