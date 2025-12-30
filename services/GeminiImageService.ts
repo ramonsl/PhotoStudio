@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger'
 
-export type OutputType = 'front' | 'back' | 'real_situation'
+export type OutputType = 'front' | 'back' | 'real_situation_front_male' | 'real_situation_back_male' | 'real_situation_front_female' | 'real_situation_back_female'
+
 
 interface GenerationResult {
     imageUrl: string
@@ -29,7 +30,13 @@ export class GeminiImageService {
 
             back: `Extract the clothing item from the reference image and place it on a professional white mannequin in a studio setting, back view. Create a photorealistic product photography with white seamless background, soft diffused lighting, centered composition, high resolution 8k quality. The clothing should be perfectly fitted on the mannequin, showing the back details clearly with clean and minimalist aesthetic.`,
 
-            real_situation: `Extract the clothing item from the reference image and show it being worn by a real person (model) in a natural lifestyle setting. The clothing should look natural and well-fitted on the person. Create a photorealistic lifestyle photography with casual outdoor environment, natural lighting, candid pose, high quality 8k resolution, authentic and relatable, modern fashion photography style.`,
+            real_situation_front_male: `Extract the clothing item from the reference image and showcase it as the main focus being worn by a MALE model in a natural lifestyle setting, FRONT VIEW. THE PRODUCT MUST BE THE MAIN SUBJECT - use close-up or medium shot composition that highlights the clothing details, texture, and fit. The male model should be partially visible or in a neutral pose to complement the product without distracting from it. Create a photorealistic product-focused lifestyle photography with natural environment, soft natural lighting, product-centric composition, high quality 8k resolution, clean and professional aesthetic that emphasizes the clothing item above all else.`,
+
+            real_situation_back_male: `Extract the clothing item from the reference image and showcase it as the main focus being worn by a MALE model in a natural lifestyle setting, BACK VIEW. THE PRODUCT MUST BE THE MAIN SUBJECT - use close-up or medium shot composition that highlights the clothing details, texture, and fit from behind. The male model should be partially visible or in a neutral pose to complement the product without distracting from it. Create a photorealistic product-focused lifestyle photography with natural environment, soft natural lighting, product-centric composition, high quality 8k resolution, clean and professional aesthetic that emphasizes the clothing item above all else.`,
+
+            real_situation_front_female: `Extract the clothing item from the reference image and showcase it as the main focus being worn by a FEMALE model in a natural lifestyle setting, FRONT VIEW. THE PRODUCT MUST BE THE MAIN SUBJECT - use close-up or medium shot composition that highlights the clothing details, texture, and fit. The female model should be partially visible or in a neutral pose to complement the product without distracting from it. Create a photorealistic product-focused lifestyle photography with natural environment, soft natural lighting, product-centric composition, high quality 8k resolution, clean and professional aesthetic that emphasizes the clothing item above all else.`,
+
+            real_situation_back_female: `Extract the clothing item from the reference image and showcase it as the main focus being worn by a FEMALE model in a natural lifestyle setting, BACK VIEW. THE PRODUCT MUST BE THE MAIN SUBJECT - use close-up or medium shot composition that highlights the clothing details, texture, and fit from behind. The female model should be partially visible or in a neutral pose to complement the product without distracting from it. Create a photorealistic product-focused lifestyle photography with natural environment, soft natural lighting, product-centric composition, high quality 8k resolution, clean and professional aesthetic that emphasizes the clothing item above all else.`,
         }
 
         return basePrompts[outputType]
@@ -185,17 +192,18 @@ export class GeminiImageService {
     }
 
     async generateMultipleImages(
-        outputTypes: OutputType[],
-        referenceImageBase64: string
+        requests: Array<{
+            outputType: OutputType
+            referenceImageBase64: string
+        }>
     ): Promise<GenerationResult[]> {
         logger.info('Generating multiple images with reference', {
-            outputTypes,
-            hasReferenceImage: !!referenceImageBase64,
+            requestCount: requests.length,
         })
 
         const results = await Promise.all(
-            outputTypes.map(type =>
-                this.generateImage(type, referenceImageBase64)
+            requests.map(req =>
+                this.generateImage(req.outputType, req.referenceImageBase64)
             )
         )
 
