@@ -1,17 +1,18 @@
-# Photo Studio POC
+# Photo Studio
 
-Proof of Concept para geração de imagens de estúdio de produtos de vestuário usando **Google Gemini 2.5 Flash Image**.
+Aplicação para geração de imagens de estúdio de produtos de vestuário usando **Google Gemini 2.5 Flash Image**.
 
 ## 🚀 Funcionalidades
 
-- Upload de 1-2 fotos de produtos (roupas, tênis, acessórios)
+- **Upload Dual de Fotos**: Envie foto de frente (obrigatória) e de costas (opcional)
 - **Geração baseada em imagem de referência** (não precisa descrever o produto!)
-- Geração de até 3 tipos de visualizações:
-  - **Front**: Produto em manequim profissional (vista frontal)
-  - **Back**: Produto em manequim profissional (vista traseira)
-  - **Real Situation**: Produto sendo usado por modelo real em ambiente natural
+- **Geração em Lote**: Crie múltiplas visualizações de uma vez
+- Tipos de visualização disponíveis:
+  - **Manequim**: Produto em manequim profissional (frente e costas)
+  - **Situação Real**: Produto sendo usado por modelo (masculino/feminino)
+- **Download Multi-Formato**: Baixe imagens otimizadas para Instagram, Mercado Livre, Shopee e Amazon
+- **Sistema de Feedback**: Avalie e melhore as gerações
 - Interface moderna e responsiva
-- Modo display-only (imagens não são salvas no banco)
 
 ## 🛠️ Stack Tecnológica
 
@@ -19,7 +20,8 @@ Proof of Concept para geração de imagens de estúdio de produtos de vestuário
 - **Linguagem**: TypeScript
 - **Estilização**: Tailwind CSS + Lucide Icons
 - **IA**: Google Gemini 2.5 Flash Image (v1beta API)
-- **Banco de Dados**: PostgreSQL (Neon) - opcional
+- **Banco de Dados**: PostgreSQL (Neon)
+- **Storage**: Cloudinary
 - **Processamento de Imagens**: Sharp
 
 ## 📋 Pré-requisitos
@@ -27,7 +29,8 @@ Proof of Concept para geração de imagens de estúdio de produtos de vestuário
 - Node.js 18+
 - npm ou yarn
 - **API Key do Google Gemini** (obrigatório)
-- Conta no Neon (PostgreSQL) - opcional, apenas se quiser persistir imagens
+- **Conta no Cloudinary** (obrigatório para upload)
+- Conta no Neon (PostgreSQL) - obrigatório para persistência
 
 ## ⚙️ Configuração
 
@@ -54,14 +57,17 @@ Edite `.env.local` e adicione suas credenciais:
 # Obtenha em: https://aistudio.google.com/app/apikey
 GEMINI_API_KEY='sua-chave-aqui'
 
-# Opcional: Banco de dados (apenas se quiser persistir imagens)
+# Obrigatório: Banco de dados PostgreSQL
 # Obtenha em: https://neon.tech
 DATABASE_URL='postgresql://user:pass@host.neon.tech/db?sslmode=require'
+
+# Obrigatório: Cloudinary para upload de imagens
+# Obtenha em: https://cloudinary.com/console
+CLOUDINARY_API_KEY='sua-api-key'
+CLOUDINARY_API_SECRET='seu-api-secret'
 ```
 
-### 3. (Opcional) Execute as migrations
-
-Se você configurou o banco de dados e quer persistir imagens:
+### 3. Execute as migrations
 
 ```bash
 npm run migrate:test
@@ -90,37 +96,56 @@ npm start
 photostudio/
 ├── app/
 │   ├── api/
-│   │   ├── upload-product/    # Upload de fotos
-│   │   └── generate-studio/   # Geração de imagens
-│   ├── studio/                # Página principal
-│   └── page.tsx              # Landing page
+│   │   ├── upload-product/      # Upload de fotos (Cloudinary)
+│   │   ├── generate-studio/     # Geração de imagens (Gemini)
+│   │   ├── resize-image/        # Redimensionamento multi-formato
+│   │   ├── feedbacks/           # Sistema de feedback
+│   │   └── users/               # Gestão de usuários
+│   ├── studio/                  # Página principal
+│   └── page.tsx                 # Landing page
 ├── components/
-│   ├── ImageUploadZone.tsx
-│   ├── OutputTypeSelector.tsx
-│   └── GeneratedImageGallery.tsx
+│   ├── ImageUploadZone.tsx      # Upload dual (frente/costas)
+│   ├── OutputTypeSelector.tsx   # Seleção de tipos + gênero
+│   ├── GeneratedImageGallery.tsx
+│   ├── DownloadModal.tsx        # Download multi-formato
+│   └── FeedbackModal.tsx        # Coleta de feedback
 ├── lib/
-│   ├── gemini.ts             # Cliente Gemini (v1beta)
-│   └── logger.ts             # Logger centralizado
+│   ├── db.ts                    # Pool PostgreSQL
+│   ├── gemini.ts                # Cliente Gemini (v1beta)
+│   ├── cloudinary.ts            # Cliente Cloudinary
+│   └── logger.ts                # Logger centralizado
 ├── services/
-│   └── GeminiImageService.ts # Serviço de geração
+│   ├── GeminiImageService.ts    # Serviço de geração
+│   └── ImageResizeService.ts    # Redimensionamento
+├── repositories/
+│   ├── ImageRepository.ts       # CRUD de imagens
+│   ├── FeedbackRepository.ts    # CRUD de feedbacks
+│   └── UserRepository.ts        # CRUD de usuários
+├── migrations/                  # Migrations do banco
 └── types/
-    └── index.ts              # Interfaces TypeScript
+    └── index.ts                 # Interfaces TypeScript
 ```
 
 ## 🎯 Como Usar
 
 1. Acesse a página `/studio`
-2. Faça upload da foto do produto (JPG, PNG, WebP)
-3. Selecione os tipos de visualização desejados (até 3)
-4. Clique em "Gerar Imagens"
-5. Aguarde a geração (pode levar alguns segundos)
-6. Visualize e faça download das imagens geradas
+2. Faça upload da **foto de frente** (obrigatória)
+3. Opcionalmente, faça upload da **foto de costas**
+4. Escolha o tipo de geração:
+   - **Manequim**: Gera frente e costas em manequim
+   - **Situação Real**: Escolha o gênero do modelo (masculino/feminino/ambos)
+5. Clique em "Gerar Imagens"
+6. Aguarde a geração (pode levar alguns segundos por imagem)
+7. Visualize os resultados na galeria
+8. Baixe as imagens em formatos otimizados para diferentes plataformas
+9. Deixe seu feedback para melhorar as gerações futuras
 
 ## 🔧 Scripts Disponíveis
 
 - `npm run dev` - Servidor de desenvolvimento
 - `npm run build` - Build de produção
 - `npm start` - Servidor de produção
+- `npm test` - Executar testes (Jest)
 - `npm run migrate:create -- nome` - Criar migration
 - `npm run migrate:test` - Executar migrations (dev)
 - `npm run migrate:prod` - Executar migrations (prod)
@@ -130,7 +155,7 @@ photostudio/
 ### Sobre a API Gemini 2.5 Flash Image
 
 - **Endpoint**: Usa v1beta (pode mudar no futuro)
-- **Custos**: Monitore o uso da API no Google Cloud Console
+- **Custos**: ~$0.30/1M tokens de entrada, ~$2.50/1M tokens de saída
 - **Limites**: Verifique os limites de requisições da sua conta
 - **Qualidade**: A qualidade das imagens depende da qualidade da foto enviada
 
@@ -140,21 +165,22 @@ photostudio/
 - ✅ Validação de tipos de arquivo no upload
 - ✅ Limite de tamanho de arquivo (10MB)
 - ✅ Logs centralizados para debugging
+- ✅ Arquitetura SOLID e Clean Code
 
 ### Storage
 
-- Uploads são salvos em `public/uploads/`
-- Para produção, configure storage em nuvem (S3, Cloudinary, etc.)
-- Imagens geradas são retornadas como data URLs (base64)
+- Uploads são salvos no Cloudinary
+- Imagens geradas são armazenadas no PostgreSQL (Neon)
+- Sistema de tracking de custos por geração
 
 ## 🔮 Próximos Passos
 
+- [ ] Implementar testes automatizados (cobertura 0% atualmente)
+- [ ] Atualizar Next.js para versão mais recente (corrigir vulnerabilidades)
 - [ ] Implementar sistema de filas para processamento assíncrono
 - [ ] Adicionar autenticação de usuários
-- [ ] Implementar storage em nuvem
-- [ ] Adicionar testes automatizados (Jest)
 - [ ] Implementar rate limiting
-- [ ] Melhorar prompts com base em feedback
+- [ ] Melhorar prompts com base em feedback coletado
 - [ ] Adicionar opção de editar/refinar imagens geradas
 - [ ] Suporte a múltiplos idiomas
 

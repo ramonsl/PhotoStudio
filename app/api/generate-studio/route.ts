@@ -7,12 +7,12 @@ import { imageRepository } from '@/repositories/ImageRepository'
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { imageUrls, outputTypes, userId } = body
+        const { frontImageUrl, backImageUrl, outputTypes, userId } = body
 
         // Validation
-        if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+        if (!frontImageUrl || typeof frontImageUrl !== 'string') {
             return NextResponse.json(
-                { error: 'imageUrls is required and must be a non-empty array' },
+                { error: 'frontImageUrl is required and must be a string' },
                 { status: 400 }
             )
         }
@@ -24,63 +24,75 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        if (outputTypes.length > 3) {
+        // Validate that back photo exists if trying to generate back images
+        const backOutputTypes = outputTypes.filter((type: string) => type.includes('back'))
+        if (backOutputTypes.length > 0 && !backImageUrl) {
             return NextResponse.json(
-                { error: 'Maximum 3 output types allowed' },
+                { error: 'backImageUrl is required to generate back view images. Please upload a back photo.' },
                 { status: 400 }
             )
         }
 
-        const validOutputTypes: OutputType[] = ['front', 'back', 'real_situation']
-        for (const type of outputTypes) {
-            if (!validOutputTypes.includes(type)) {
-                return NextResponse.json(
-                    { error: `Invalid output type: ${type}` },
-                    { status: 400 }
-                )
-            }
-        }
-
-        logger.info('Starting image generation with reference image', {
-            imageUrls,
+        logger.info('Starting image generation with reference images', {
+            frontImageUrl,
+            backImageUrl,
             outputTypes,
             userId,
         })
 
-        // Fetch the first uploaded image and convert to base64
-        const imageUrl = imageUrls[0]
-        let referenceImageBase64: string
+        // Prepare requests with correct photo for each output type
+        const imageRequests = await Promise.all(
+            outputTypes.map(async (outputType: OutputType) => {
+                // Determine which photo to use based on output type
+                const isBackView = outputType.includes('back')
+                const imageUrl = isBackView ? backImageUrl : frontImageUrl
 
-        try {
-            // Fetch from Cloudinary URL
-            const imageResponse = await fetch(imageUrl)
-            if (!imageResponse.ok) {
-                throw new Error(`Failed to fetch image: ${imageResponse.statusText}`)
-            }
-            const imageBuffer = await imageResponse.arrayBuffer()
-            referenceImageBase64 = Buffer.from(imageBuffer).toString('base64')
+                if (!imageUrl) {
+                    throw new Error(`Missing ${isBackView ? 'back' : 'front'} photo for output type: ${outputType}`)
+                }
 
-            logger.info('Image converted to base64', {
-                imageUrl,
-                base64Length: referenceImageBase64.length,
+                try {
+                    // Fetch and convert to base64
+                    const imageResponse = await fetch(imageUrl)
+                    if (!imageResponse.ok) {
+                        throw new Error(`Failed to fetch image: ${imageResponse.statusText}`)
+                    }
+                    const imageBuffer = await imageResponse.arrayBuffer()
+                    const referenceImageBase64 = Buffer.from(imageBuffer).toString('base64')
+
+                    logger.info('Image converted to base64', {
+                        outputType,
+                        imageUrl,
+                        base64Length: referenceImageBase64.length,
+                    })
+
+                    return {
+                        outputType,
+                        referenceImageBase64,
+                        originalUrl: imageUrl,
+                    }
+                } catch (error: any) {
+                    logger.error('Error loading reference image', {
+                        outputType,
+                        imageUrl,
+                        error: error.message,
+                    })
+                    throw new Error(`Failed to load ${isBackView ? 'back' : 'front'} image: ${error.message}`)
+                }
             })
-        } catch (error: any) {
-            logger.error('Error loading reference image', { error: error.message })
-            return NextResponse.json(
-                { error: `Failed to load reference image: ${error.message}` },
-                { status: 400 }
-            )
-        }
+        )
 
-        // Generate images using the reference image
+        // Generate images using the reference images
         const results = await geminiImageService.generateMultipleImages(
-            outputTypes,
-            referenceImageBase64
+            imageRequests.map(req => ({
+                outputType: req.outputType,
+                referenceImageBase64: req.referenceImageBase64,
+            }))
         )
 
         // Upload generated images to Cloudinary
         const images = await Promise.all(
-            results.map(async (result, index) => {
+            results.map(async (result: any, index: number) => {
                 try {
                     // Extract base64 data from data URL
                     const base64Data = result.imageUrl.split(',')[1]
@@ -112,9 +124,9 @@ export async function POST(request: NextRequest) {
 
                     return {
                         id: `temp-${Date.now()}-${index}`,
-                        original_photo_url: imageUrls[0],
+                        original_photo_url: imageRequests[index].originalUrl,
                         generated_url: uploadResult.secure_url,
-                        output_type: outputTypes[index],
+                        output_type: imageRequests[index].outputType,
                         prompt_used: result.prompt,
                         product_description: 'Generated from reference image',
                         model_api: 'gemini-2.5-flash-image',
@@ -133,9 +145,9 @@ export async function POST(request: NextRequest) {
                     // Return with data URL if Cloudinary upload fails
                     return {
                         id: `temp-${Date.now()}-${index}`,
-                        original_photo_url: imageUrls[0],
+                        original_photo_url: imageRequests[index].originalUrl,
                         generated_url: result.imageUrl,
-                        output_type: outputTypes[index],
+                        output_type: imageRequests[index].outputType,
                         prompt_used: result.prompt,
                         product_description: 'Generated from reference image',
                         model_api: 'gemini-2.5-flash-image',
@@ -151,7 +163,7 @@ export async function POST(request: NextRequest) {
 
         // Save to database
         const savedImages = await Promise.all(
-            images.map(async (image) => {
+            images.map(async (image: any) => {
                 try {
                     const saved = await imageRepository.saveGeneratedImage({
                         original_photo_url: image.original_photo_url,

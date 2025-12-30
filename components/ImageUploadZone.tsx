@@ -2,43 +2,31 @@
 
 import { useState, useCallback } from 'react'
 import { Upload, X, Image as ImageIcon } from 'lucide-react'
-
-interface UploadedFile {
-    id: string
-    filename: string
-    url: string
-    size: number
-    type: string
-}
+import { UploadedFile, PhotoSet } from '@/types'
 
 interface ImageUploadZoneProps {
-    onFilesUploaded: (files: UploadedFile[]) => void
-    maxFiles?: number
+    onFilesUploaded: (photos: PhotoSet) => void
 }
 
-export default function ImageUploadZone({ onFilesUploaded, maxFiles = 2 }: ImageUploadZoneProps) {
-    const [files, setFiles] = useState<UploadedFile[]>([])
-    const [isDragging, setIsDragging] = useState(false)
-    const [isUploading, setIsUploading] = useState(false)
+export default function ImageUploadZone({ onFilesUploaded }: ImageUploadZoneProps) {
+    const [frontPhoto, setFrontPhoto] = useState<UploadedFile | null>(null)
+    const [backPhoto, setBackPhoto] = useState<UploadedFile | null>(null)
+    const [isUploadingFront, setIsUploadingFront] = useState(false)
+    const [isUploadingBack, setIsUploadingBack] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const handleDragOver = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(true)
-    }, [])
+    const notifyParent = useCallback((front: UploadedFile | null, back: UploadedFile | null) => {
+        onFilesUploaded({ front, back })
+    }, [onFilesUploaded])
 
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(false)
-    }, [])
-
-    const uploadFiles = async (filesToUpload: File[]) => {
+    const uploadFile = async (file: File, photoType: 'front' | 'back') => {
+        const setIsUploading = photoType === 'front' ? setIsUploadingFront : setIsUploadingBack
         setIsUploading(true)
         setError(null)
 
         try {
             const formData = new FormData()
-            filesToUpload.forEach(file => formData.append('files', file))
+            formData.append('files', file)
 
             const response = await fetch('/api/upload-product', {
                 method: 'POST',
@@ -51,9 +39,15 @@ export default function ImageUploadZone({ onFilesUploaded, maxFiles = 2 }: Image
                 throw new Error(data.error || 'Upload failed')
             }
 
-            const newFiles = [...files, ...data.files]
-            setFiles(newFiles)
-            onFilesUploaded(newFiles)
+            const uploadedFile = data.files[0]
+
+            if (photoType === 'front') {
+                setFrontPhoto(uploadedFile)
+                notifyParent(uploadedFile, backPhoto)
+            } else {
+                setBackPhoto(uploadedFile)
+                notifyParent(frontPhoto, uploadedFile)
+            }
         } catch (err: any) {
             setError(err.message)
         } finally {
@@ -61,85 +55,114 @@ export default function ImageUploadZone({ onFilesUploaded, maxFiles = 2 }: Image
         }
     }
 
-    const handleDrop = useCallback(async (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(false)
-
-        const droppedFiles = Array.from(e.dataTransfer.files)
-
-        if (files.length + droppedFiles.length > maxFiles) {
-            setError(`Máximo de ${maxFiles} arquivos permitidos`)
-            return
-        }
-
-        await uploadFiles(droppedFiles)
-    }, [files, maxFiles])
-
-    const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFiles = e.target.files
-        if (!selectedFiles) return
-
-        const fileArray = Array.from(selectedFiles)
-
-        if (files.length + fileArray.length > maxFiles) {
-            setError(`Máximo de ${maxFiles} arquivos permitidos`)
-            return
-        }
-
-        await uploadFiles(fileArray)
+    const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>, photoType: 'front' | 'back') => {
+        const selectedFile = e.target.files?.[0]
+        if (!selectedFile) return
+        await uploadFile(selectedFile, photoType)
+        // Reset input
+        e.target.value = ''
     }
 
-    const removeFile = (id: string) => {
-        const newFiles = files.filter(f => f.id !== id)
-        setFiles(newFiles)
-        onFilesUploaded(newFiles)
+    const handleDrop = async (e: React.DragEvent, photoType: 'front' | 'back') => {
+        e.preventDefault()
+        const droppedFile = e.dataTransfer.files[0]
+        if (!droppedFile) return
+        await uploadFile(droppedFile, photoType)
+    }
+
+    const removePhoto = (photoType: 'front' | 'back') => {
+        if (photoType === 'front') {
+            setFrontPhoto(null)
+            notifyParent(null, backPhoto)
+        } else {
+            setBackPhoto(null)
+            notifyParent(frontPhoto, null)
+        }
+    }
+
+    const renderUploadZone = (
+        photoType: 'front' | 'back',
+        label: string,
+        photo: UploadedFile | null,
+        isUploading: boolean,
+        required: boolean = false
+    ) => {
+        const [isDragging, setIsDragging] = useState(false)
+
+        return (
+            <div className="flex-1">
+                <div className="flex items-center gap-2 mb-3">
+                    <h4 className="text-sm font-semibold text-gray-700">{label}</h4>
+                    {required && <span className="text-xs text-red-500">*obrigatória</span>}
+                    {!required && <span className="text-xs text-gray-400">opcional</span>}
+                </div>
+
+                {!photo ? (
+                    <div
+                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                        onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
+                        onDrop={(e) => { handleDrop(e, photoType); setIsDragging(false) }}
+                        className={`
+                            relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300
+                            ${isDragging ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-purple-400'}
+                            ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                        `}
+                    >
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFileInput(e, photoType)}
+                            disabled={isUploading}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                        />
+
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                {isUploading ? (
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                                ) : (
+                                    <Upload className="w-6 h-6 text-purple-600" />
+                                )}
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                    {isUploading ? 'Enviando...' : 'Arraste a foto aqui'}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                    ou clique para selecionar
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="relative group">
+                        <div className="aspect-square rounded-lg overflow-hidden border-2 border-green-300 bg-gray-100">
+                            <img
+                                src={photo.url}
+                                alt={photo.filename}
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+
+                        <button
+                            onClick={() => removePhoto(photoType)}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+
+                        <div className="mt-2 text-xs text-gray-500 truncate">
+                            {photo.filename}
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
     }
 
     return (
         <div className="space-y-4">
-            {/* Upload Zone */}
-            <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`
-          relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300
-          ${isDragging ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-purple-400'}
-          ${files.length >= maxFiles ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-        `}
-            >
-                <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleFileInput}
-                    disabled={files.length >= maxFiles || isUploading}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                />
-
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
-                        {isUploading ? (
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                        ) : (
-                            <Upload className="w-8 h-8 text-purple-600" />
-                        )}
-                    </div>
-
-                    <div>
-                        <p className="text-lg font-semibold text-gray-700 mb-1">
-                            {isUploading ? 'Enviando...' : 'Arraste suas fotos aqui'}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                            ou clique para selecionar (máximo {maxFiles} fotos)
-                        </p>
-                        <p className="text-xs text-gray-400 mt-2">
-                            JPG, PNG ou WEBP até 10MB
-                        </p>
-                    </div>
-                </div>
-            </div>
-
             {/* Error Message */}
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -147,33 +170,19 @@ export default function ImageUploadZone({ onFilesUploaded, maxFiles = 2 }: Image
                 </div>
             )}
 
-            {/* Preview Grid */}
-            {files.length > 0 && (
-                <div className="grid grid-cols-2 gap-4">
-                    {files.map(file => (
-                        <div key={file.id} className="relative group">
-                            <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100">
-                                <img
-                                    src={file.url}
-                                    alt={file.filename}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
+            {/* Upload Zones */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {renderUploadZone('front', 'Foto de Frente', frontPhoto, isUploadingFront, true)}
+                {renderUploadZone('back', 'Foto de Costas', backPhoto, isUploadingBack, false)}
+            </div>
 
-                            <button
-                                onClick={() => removeFile(file.id)}
-                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-
-                            <div className="mt-2 text-xs text-gray-500 truncate">
-                                {file.filename}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {/* Helper Text */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-800">
+                    💡 <strong>Dica:</strong> A foto de frente é obrigatória. A foto de costas é opcional, mas se não for enviada,
+                    apenas as imagens de frente serão geradas.
+                </p>
+            </div>
         </div>
     )
 }
